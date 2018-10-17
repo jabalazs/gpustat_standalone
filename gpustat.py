@@ -143,6 +143,15 @@ class GPUStat(object):
         return self
 
 
+def exec_command(command, ignore_exceptions=False):
+    try:
+        return check_output(command, shell=True).decode().strip()
+    except Exception as e:
+        if not ignore_exceptions:
+            raise e
+        return None
+
+
 class GPUStatCollection(object):
     def __init__(self, gpu_list):
         self.gpus = OrderedDict()
@@ -171,7 +180,7 @@ class GPUStatCollection(object):
         gpu_list = []
 
         command = f"nvidia-smi --query-gpu={','.join(gpu_query_columns)} --format=csv,noheader,nounits"
-        smi_output = check_output(command, shell=True).decode().strip()
+        smi_output = exec_command(command)
 
         for line in smi_output.split("\n"):
             if not line:
@@ -190,7 +199,7 @@ class GPUStatCollection(object):
         # 1. collect all running GPU processes
         gpu_query_columns = ("gpu_uuid", "pid", "used_memory")
         command = f"nvidia-smi --query-compute-apps={','.join(gpu_query_columns)} --format=csv,noheader,nounits"
-        smi_output = check_output(command, shell=True).decode()
+        smi_output = exec_command(command)
 
         process_entries = []
         for line in smi_output.split("\n"):
@@ -212,39 +221,23 @@ class GPUStatCollection(object):
         ps_format = "pid,user:16,comm"
         ps_pids = ",".join(map(str, pid_map.keys()))
         ps_command = f"ps -o {ps_format} -p {ps_pids}"
-        pid_output = check_output(ps_command, shell=True).decode().strip()
+        pid_output = exec_command(ps_command)
 
         for line in pid_output.split("\n"):
             if (not line) or "PID" in line:
                 continue
-            pid, user, comm = line.split()[:3]
+            pid, user, comm = line.split()
             pid_map[int(pid)] = {"user": user, "comm": comm}
 
         # 2.1 add lxc container / docker container info to username name
-        lxc_version = None
-        try:
-            lxc_version = (
-                check_output("lxc-info --version", shell=True).decode().strip()
-            )
-        except Exception:
-            pass
 
-        docker_version = None
-        try:
-            docker_version = (
-                check_output("docker --version", shell=True).decode().strip()
-            )
-        except Exception as e:
-            pass
-
-        # except OSError as e:
-        #    docker_version = True
+        # lxc_version and docker_version will be None if the commands fail
+        lxc_version = exec_command("lxc-info --version", ignore_exceptions=True)
+        docker_version = exec_command("docker --version", ignore_exceptions=True)
 
         if docker_version:
             cmd = 'docker ps --format "{{.ID}}<>{{.Names}}<>{{.Command}}" --no-trunc'
-            docker_info_list = (
-                check_output(cmd, shell=True).decode().strip().split("\n")
-            )
+            docker_info_list = exec_command(cmd)
             docker_info_dict = {}
             for item in docker_info_list:
                 try:
