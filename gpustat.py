@@ -177,6 +177,7 @@ class GPUStatCollection(object):
             if not line:
                 continue
             query_results = line.split(",")
+            query_results = [result.strip() for result in query_results]
             zipped_results = zip(gpu_query_columns, query_results)
             in_dict = {key: value.strip() for (key, value) in zipped_results}
             g = GPUStat(in_dict)
@@ -188,26 +189,17 @@ class GPUStatCollection(object):
     def running_processes():
         # 1. collect all running GPU processes
         gpu_query_columns = ("gpu_uuid", "pid", "used_memory")
-        smi_output = check_output(
-            r"nvidia-smi --query-compute-apps={query_cols} --format=csv,noheader,nounits".format(
-                query_cols=",".join(gpu_query_columns)
-            ),
-            shell=True,
-        ).decode()
+        command = f"nvidia-smi --query-compute-apps={','.join(gpu_query_columns)} --format=csv,noheader,nounits"
+        smi_output = check_output(command, shell=True).decode()
 
         process_entries = []
         for line in smi_output.split("\n"):
             if not line:
                 continue
             query_results = line.split(",")
-            process_entry = dict(
-                {
-                    col_name: col_value.strip()
-                    for (col_name, col_value) in zip(
-                        gpu_query_columns, query_results
-                    )
-                }
-            )
+            query_results = [result.strip() for result in query_results]
+            zipped_results = zip(gpu_query_columns, query_results)
+            process_entry = {key: value for (key, value) in zipped_results}
             process_entries.append(process_entry)
 
         pid_map = {
@@ -217,22 +209,16 @@ class GPUStatCollection(object):
         }
 
         # 2. map pid to username, etc.
-        if pid_map:
-            pid_output = (
-                check_output(
-                    "ps -o {} -p {}".format(
-                        "pid,user:16,comm", ",".join(map(str, pid_map.keys()))
-                    ),
-                    shell=True,
-                )
-                .decode()
-                .strip()
-            )
-            for line in pid_output.split("\n"):
-                if (not line) or "PID" in line:
-                    continue
-                pid, user, comm = line.split()[:3]
-                pid_map[int(pid)] = {"user": user, "comm": comm}
+        ps_format = "pid,user:16,comm"
+        ps_pids = ",".join(map(str, pid_map.keys()))
+        ps_command = f"ps -o {ps_format} -p {ps_pids}"
+        pid_output = check_output(ps_command, shell=True).decode().strip()
+
+        for line in pid_output.split("\n"):
+            if (not line) or "PID" in line:
+                continue
+            pid, user, comm = line.split()[:3]
+            pid_map[int(pid)] = {"user": user, "comm": comm}
 
         # 2.1 add lxc container / docker container info to username name
         lxc_version = None
