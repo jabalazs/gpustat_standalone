@@ -72,34 +72,20 @@ class GPUStat(object):
         # color settings
         colors = {}
 
-        def _conditional(
-            cond_fn, true_value, false_value, error_value=ANSIColors.GRAY
-        ):
-            try:
-                if cond_fn():
-                    return true_value
-                else:
-                    return false_value
-            except Exception:
-                return error_value
-
         colors["C0"] = ANSIColors.RESET
         colors["C1"] = ANSIColors.CYAN
         colors["CName"] = ANSIColors.BLUE
-        colors["CTemp"] = _conditional(
-            lambda: int(self.entry["temperature.gpu"]) < 50,
-            ANSIColors.RED,
-            ANSIColors.BOLD_RED,
-        )
+        colors["CTemp"] = ANSIColors.RED
+        if int(self.entry["temperature.gpu"]) >= 50:
+            colors["CTemp"] = ANSIColors.BOLD_RED
+
         colors["CMemU"] = ANSIColors.BOLD_YELLOW
         colors["CMemT"] = ANSIColors.YELLOW
         colors["CMemP"] = ANSIColors.YELLOW
         colors["CUser"] = ANSIColors.GRAY
-        colors["CUtil"] = _conditional(
-            lambda: int(self.entry["utilization.gpu"]) < 30,
-            ANSIColors.GREEN,
-            ANSIColors.BOLD_GREEN,
-        )
+        colors["CUtil"] = ANSIColors.GREEN
+        if int(self.entry["utilization.gpu"]) >= 30:
+            colors["CUtil"] = ANSIColors.BOLD_GREEN
 
         if not with_colors:
             for k in list(colors.keys()):
