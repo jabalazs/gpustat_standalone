@@ -95,12 +95,12 @@ class GPUStat(object):
         gpu_index = f"%(C1)s[{self.entry['index']}]%(C0)s"
         gpu_name = f"%(CName)s{self.entry['name']:{gpuname_width}}%(C0)s"
         gpu_temp = f"%(CTemp)s{self.entry['temperature.gpu']:>3}'C%(C0)s"
-        gpu_util = f"%(CUtil)s{self.entry['utilization.gpu']:>3} %%%(C0)s"
-        gpu_mem_used = f"%(C1)s%(CMemU)s{self.entry['memory.used']:>5}%(C0)s"
+        gpu_utilization = f"%(CUtil)s{self.entry['utilization.gpu']:>3} %%%(C0)s"
+        gpu_mem_used = f"%(CMemU)s{self.entry['memory.used']:>5}%(C0)s"
         gpu_mem_total = f"%(CMemT)s{self.entry['memory.total']:>5}%(C0)s MB"
 
         reps = gpu_index + " " + gpu_name + " |" + gpu_temp + ", "
-        reps += gpu_util + " | " + gpu_mem_used + " / " + gpu_mem_total
+        reps += gpu_utilization + " | " + gpu_mem_used + " / " + gpu_mem_total
 
         reps = reps % colors
 
@@ -177,15 +177,9 @@ class GPUStatCollection(object):
             if not line:
                 continue
             query_results = line.split(",")
-
-            g = GPUStat(
-                {
-                    col_name: col_value.strip()
-                    for (col_name, col_value) in zip(
-                        gpu_query_columns, query_results
-                    )
-                }
-            )
+            zipped_results = zip(gpu_query_columns, query_results)
+            in_dict = {key: value.strip() for (key, value) in zipped_results}
+            g = GPUStat(in_dict)
             gpu_list.append(g)
 
         return GPUStatCollection(gpu_list)
