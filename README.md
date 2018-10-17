@@ -6,7 +6,7 @@ This is a standalone script of `gpustat`. You can find the official version in
 
 # Dependencies
 
-Python 2 or 3
+Python 3
 
 
 # Execution

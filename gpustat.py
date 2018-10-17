@@ -14,10 +14,7 @@ from subprocess import check_output, CalledProcessError
 from datetime import datetime
 from collections import OrderedDict, defaultdict
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 import sys
 import locale
 import platform
@@ -48,9 +45,7 @@ class ANSIColors:
 class GPUStat(object):
     def __init__(self, entry):
         if not isinstance(entry, dict):
-            raise TypeError(
-                "entry should be a dict, {} given".format(type(entry))
-            )
+            raise TypeError(f"entry should be a dict, {type(entry)} given")
         self.entry = entry
         self.processes = []
 
@@ -111,12 +106,18 @@ class GPUStat(object):
                 colors[k] = ""
 
         # build one-line display information
-        reps = (
-            "%(C1)s[{entry[index]}]%(C0)s %(CName)s{entry[name]:{gpuname_width}}%(C0)s |"
-            + "%(CTemp)s{entry[temperature.gpu]:>3}'C%(C0)s, %(CUtil)s{entry[utilization.gpu]:>3} %%%(C0)s | "
-            + "%(C1)s%(CMemU)s{entry[memory.used]:>5}%(C0)s / %(CMemT)s{entry[memory.total]:>5}%(C0)s MB"
-        ) % colors
-        reps = reps.format(entry=self.entry, gpuname_width=gpuname_width)
+        gpu_index = f"%(C1)s[{self.entry['index']}]%(C0)s"
+        gpu_name = f"%(CName)s{self.entry['name']:{gpuname_width}}%(C0)s"
+        gpu_temp = f"%(CTemp)s{self.entry['temperature.gpu']:>3}'C%(C0)s"
+        gpu_util = f"%(CUtil)s{self.entry['utilization.gpu']:>3} %%%(C0)s"
+        gpu_mem_used = f"%(C1)s%(CMemU)s{self.entry['memory.used']:>5}%(C0)s"
+        gpu_mem_total = f"%(CMemT)s{self.entry['memory.total']:>5}%(C0)s MB"
+
+        reps = gpu_index + " " + gpu_name + " |" + gpu_temp + ", "
+        reps += gpu_util + " | " + gpu_mem_used + " / " + gpu_mem_total
+
+        reps = reps % colors
+
         reps += " |"
 
         def _repr(v, none_value="???"):
@@ -183,16 +184,8 @@ class GPUStatCollection(object):
         )
         gpu_list = []
 
-        smi_output = (
-            check_output(
-                r"nvidia-smi --query-gpu={query_cols} --format=csv,noheader,nounits".format(
-                    query_cols=",".join(gpu_query_columns)
-                ),
-                shell=True,
-            )
-            .decode()
-            .strip()
-        )
+        command = f"nvidia-smi --query-gpu={','.join(gpu_query_columns)} --format=csv,noheader,nounits"
+        smi_output = check_output(command, shell=True).decode().strip()
 
         for line in smi_output.split("\n"):
             if not line:
