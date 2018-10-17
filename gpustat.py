@@ -217,17 +217,18 @@ class GPUStatCollection(object):
             if "Not Supported" not in e["pid"]
         }
 
-        # 2. map pid to username, etc.
-        ps_format = "pid,user:16,comm"
-        ps_pids = ",".join(map(str, pid_map.keys()))
-        ps_command = f"ps -o {ps_format} -p {ps_pids}"
-        pid_output = exec_command(ps_command)
+        # 2. map pid to username only if there are processes running in any GPU
+        if pid_map:
+            ps_format = "pid,user:16,comm"
+            ps_pids = ",".join(map(str, pid_map.keys()))
+            ps_command = f"ps -o {ps_format} -p {ps_pids}"
+            pid_output = exec_command(ps_command)
 
-        for line in pid_output.split("\n"):
-            if (not line) or "PID" in line:
-                continue
-            pid, user, comm = line.split()
-            pid_map[int(pid)] = {"user": user, "comm": comm}
+            for line in pid_output.split("\n"):
+                if (not line) or "PID" in line:
+                    continue
+                pid, user, comm = line.split()
+                pid_map[int(pid)] = {"user": user, "comm": comm}
 
         # 2.1 add lxc container / docker container info to username name
 
