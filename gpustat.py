@@ -238,19 +238,11 @@ class GPUStatCollection(object):
 
         if docker_version:
             cmd = 'docker ps --format "{{.ID}}<>{{.Names}}<>{{.Command}}" --no-trunc'
-            docker_info_list = exec_command(cmd)
+            docker_info_list = exec_command(cmd).split("\n")
             docker_info_dict = {}
             for item in docker_info_list:
-                try:
-                    docker_container_id, docker_container_name, command = item.split(
-                        "<>"
-                    )
-                    docker_info_dict[docker_container_id] = (
-                        docker_container_name,
-                        command,
-                    )
-                except ValueError:
-                    pass
+                container_id, container_name, command = item.split("<>")
+                docker_info_dict[container_id] = (container_name, command)
 
         if lxc_version or docker_version:
             for pid in pid_map:
